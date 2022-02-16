@@ -33,6 +33,8 @@ class DiscordBot(discord.Client):
                 await self._hello_command(message)
             elif msg_text.startswith("rebuild"):
                 await self._rebuild_command(message)
+            elif msg_text.startswith("update"):
+                await self._update_command(message)
             elif msg_text.startswith("top"):
                 await self._top_command(message)
             elif msg_text.startswith("embed"):
@@ -40,6 +42,30 @@ class DiscordBot(discord.Client):
                 embedVar.add_field(name="Field1", value="hi", inline=False)
                 embedVar.add_field(name="Field2", value="hi2", inline=False)
                 await message.channel.send(embed=embedVar)
+
+    async def _update_command(self, message):
+        msg = [message]
+        total_elements = db_manager.instance.get_number_of_mcservers()
+        embedVar = discord.Embed(title="Updating online players...", color=0x00ff00)
+        wait_msg = await message.reply(embed=embedVar)
+
+        for item in self._info_getter.update_players():
+            embedVar = discord.Embed(title="Updating online players...", color=0x00ff00)
+            embedVar.add_field(name="Total", value=f"{self._info_getter._total_pinged}/{total_elements}", inline=False)
+            embedVar.add_field(name="Responded", value=f"{self._info_getter._online_servers}", inline=False)
+            embedVar.add_field(name="No response", value=f"{self._info_getter._total_pinged - self._info_getter._online_servers}", inline=False)
+            embedVar.add_field(name="Elapsed", value=f"{str(datetime.now() - self._info_getter._start_time).split('.')[0]}", inline=False)
+            await wait_msg.edit(embed=embedVar)
+
+        await wait_msg.delete()
+        embedVar = discord.Embed(title="Update completed!", color=0x00ff00)
+        embedVar.add_field(name="Total", value=f"{total_elements}", inline=False)
+        embedVar.add_field(name="Online", value=f"{self._info_getter._online_servers}", inline=False)
+        msg.append(await message.reply(embed=embedVar))
+        sleep(10)
+
+        for item in msg:
+            await item.delete()
 
     async def _rebuild_command(self, message):
         msg = [message]
@@ -52,7 +78,7 @@ class DiscordBot(discord.Client):
             embedVar.add_field(name="Total", value=f"{self._info_getter._total_pinged}/{total_elements}", inline=False)
             embedVar.add_field(name="Responded", value=f"{self._info_getter._online_servers}", inline=False)
             embedVar.add_field(name="No response", value=f"{self._info_getter._total_pinged - self._info_getter._online_servers}", inline=False)
-            embedVar.add_field(name="Elapsed", value=f"{datetime.now() - self._info_getter._start_time}", inline=False)
+            embedVar.add_field(name="Elapsed", value=f"{str(datetime.now() - self._info_getter._start_time).split('.')[0]}", inline=False)
             await wait_msg.edit(embed=embedVar)
 
         await wait_msg.delete()
