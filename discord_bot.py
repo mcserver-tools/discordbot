@@ -1,3 +1,5 @@
+"""Module containing the DiscordBot class"""
+
 from datetime import datetime
 from random import Random
 from time import sleep
@@ -10,20 +12,25 @@ from discordbot.info_getter import InfoGetter
 from discordbot.mcserver import McServer
 
 class DiscordBot(discord.Client):
-    def __init__(self, info_getter: InfoGetter, *, loop=None, **options):
+    """Class providing a discord bot"""
+
+    def __init__(self, *, loop=None, **options):
         super().__init__(loop=loop, **options)
         self._info_getter = InfoGetter()
 
-    def Start(self):
-        token = open("discordbot/dc_token.txt").readline()
+    def start_bot(self):
+        """Start the discord bot"""
+        with open("discordbot/dc_token.txt", "r", encoding="utf-8") as file:
+            token = file.readline()
         self.run(token)
 
     async def on_ready(self):
+        """Builtin for when the bot is ready to use"""
         print(f"Logged in as {self.user} (ID: {self.user.id})")
         print("------")
 
     async def on_message(self, message):
-        # we do not want the bot to reply to itself
+        """Builtin for when a user sends a message"""
         if message.author.id == self.user.id:
             return
 
@@ -38,30 +45,34 @@ class DiscordBot(discord.Client):
             elif msg_text.startswith("top"):
                 await self._top_command(message)
             elif msg_text.startswith("embed"):
-                embedVar = discord.Embed(title="Title", description="Desc", color=0x00ff00)
-                embedVar.add_field(name="Field1", value="hi", inline=False)
-                embedVar.add_field(name="Field2", value="hi2", inline=False)
-                await message.channel.send(embed=embedVar)
+                embed_var = discord.Embed(title="Title", description="Desc", color=0x00ff00)
+                embed_var.add_field(name="Field1", value="hi", inline=False)
+                embed_var.add_field(name="Field2", value="hi2", inline=False)
+                await message.channel.send(embed=embed_var)
 
     async def _update_command(self, message):
         msg = [message]
         total_elements = db_manager.instance.get_number_of_mcservers()
-        embedVar = discord.Embed(title="Updating online players...", color=0x00ff00)
-        wait_msg = await message.reply(embed=embedVar)
+        embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
+        wait_msg = await message.reply(embed=embed_var)
 
         for item in self._info_getter.update_players():
-            embedVar = discord.Embed(title="Updating online players...", color=0x00ff00)
-            embedVar.add_field(name="Total", value=f"{self._info_getter._total_pinged}/{total_elements}", inline=False)
-            embedVar.add_field(name="Responded", value=f"{self._info_getter._online_servers}", inline=False)
-            embedVar.add_field(name="No response", value=f"{self._info_getter._total_pinged - self._info_getter._online_servers}", inline=False)
-            embedVar.add_field(name="Elapsed", value=f"{str(datetime.now() - self._info_getter._start_time).split('.')[0]}", inline=False)
-            await wait_msg.edit(embed=embedVar)
+            status = self._info_getter.get_status()
+            embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
+            embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
+            embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
+            embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
+            embed_var.add_field(name="Elapsed",
+                                value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
+                                inline=False)
+            await wait_msg.edit(embed=embed_var)
 
         await wait_msg.delete()
-        embedVar = discord.Embed(title="Update completed!", color=0x00ff00)
-        embedVar.add_field(name="Total", value=f"{total_elements}", inline=False)
-        embedVar.add_field(name="Online", value=f"{self._info_getter._online_servers}", inline=False)
-        msg.append(await message.reply(embed=embedVar))
+        status = self._info_getter.get_status()
+        embed_var = discord.Embed(title="Update completed!", color=0x00ff00)
+        embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
+        embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
+        msg.append(await message.reply(embed=embed_var))
         sleep(10)
 
         for item in msg:
@@ -70,28 +81,33 @@ class DiscordBot(discord.Client):
     async def _rebuild_command(self, message):
         msg = [message]
         total_elements = db_manager.instance.get_number_of_addresses()
-        embedVar = discord.Embed(title="Rebuilding list...", color=0x00ff00)
-        wait_msg = await message.reply(embed=embedVar)
+        embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
+        wait_msg = await message.reply(embed=embed_var)
 
         for item in self._info_getter.rebuild_list():
-            embedVar = discord.Embed(title="Rebuilding list...", color=0x00ff00)
-            embedVar.add_field(name="Total", value=f"{self._info_getter._total_pinged}/{total_elements}", inline=False)
-            embedVar.add_field(name="Responded", value=f"{self._info_getter._online_servers}", inline=False)
-            embedVar.add_field(name="No response", value=f"{self._info_getter._total_pinged - self._info_getter._online_servers}", inline=False)
-            embedVar.add_field(name="Elapsed", value=f"{str(datetime.now() - self._info_getter._start_time).split('.')[0]}", inline=False)
-            await wait_msg.edit(embed=embedVar)
+            status = self._info_getter.get_status()
+            embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
+            embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
+            embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
+            embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
+            embed_var.add_field(name="Elapsed",
+                                value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
+                                inline=False)
+            await wait_msg.edit(embed=embed_var)
 
         await wait_msg.delete()
-        embedVar = discord.Embed(title="Rebuild completed!", color=0x00ff00)
-        embedVar.add_field(name="Total", value=f"{total_elements}", inline=False)
-        embedVar.add_field(name="Online", value=f"{self._info_getter._online_servers}", inline=False)
-        msg.append(await message.reply(embed=embedVar))
+        status = self._info_getter.get_status()
+        embed_var = discord.Embed(title="Update completed!", color=0x00ff00)
+        embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
+        embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
+        msg.append(await message.reply(embed=embed_var))
         sleep(10)
 
         for item in msg:
             await item.delete()
 
-    async def _top_command(self, message):
+    @staticmethod
+    async def _top_command(message):
         msg = [message]
         if len(message.content.split(" ")) == 1:
             count = 5
@@ -127,22 +143,30 @@ class DiscordBot(discord.Client):
     def _get_random_address(self):
         rnd = Random()
         info_obj = None
-        c = 0
+        counter = 0
 
-        while info_obj == None or info_obj.players == 0:
-            length = db_manager.instance.get_number_of_addresses()
-            rnd_number = rnd.randint(1, length)
+        while info_obj is None or info_obj.players == 0:
+            address_count = db_manager.instance.get_number_of_addresses()
+            rnd_number = rnd.randint(1, address_count)
             address = db_manager.instance.get_address(rnd_number)
             info_obj = self._ping_address_with_return(address)
-            c += 1
-            print(f"Tried {c} addresses...", end="\r")
+            counter += 1
+            print(f"Tried {counter} addresses...", end="\r")
 
-        print(f"Tried {c} addresses...")
+        print(f"Tried {counter} addresses...")
         return info_obj
 
-    def _ping_address_with_return(self, address):
+    @staticmethod
+    def _ping_address_with_return(address):
         try:
             status = MinecraftServer(address, 25565).status()
-            return McServer((address, 25565), status.latency, status.version.name, status.players.online)
-        except:
+            return McServer((address, 25565), status.latency, status.version.name,
+                            status.players.online)
+        except TimeoutError:
+            return None
+        except ConnectionAbortedError:
+            return None
+        except ConnectionResetError:
+            return None
+        except IOError:
             return None

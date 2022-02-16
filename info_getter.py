@@ -1,11 +1,18 @@
+"""Module containing the InfoGetter class"""
+
+from datetime import datetime
 from threading import Thread
 from time import sleep
-from datetime import datetime
-from discordbot.info_getter_thread import InfoGetterThread
+
 from database import db_manager
+
+from discordbot.info_getter_thread import InfoGetterThread
 from discordbot.mcserver import McServer
 
+
 class InfoGetter():
+    """Class providing information getting methods"""
+
     def __init__(self) -> None:
         self._max_threads = 2000
         self._running_threads = 0
@@ -14,6 +21,7 @@ class InfoGetter():
         self._start_time = None
 
     def rebuild_list(self):
+        """Pings all stored addresses and saves gained information"""
         self._online_servers = 0
         self._total_pinged = 0
         self._start_time = datetime.now()
@@ -26,7 +34,8 @@ class InfoGetter():
                 db_manager.instance.commit()
                 yield None
 
-            info_getter_thread = InfoGetterThread(self, addresses)
+            info_getter_thread = InfoGetterThread(self)
+            info_getter_thread.add_list(addresses)
             Thread(target=info_getter_thread.ping_all).start()
             self._running_threads += 1
 
@@ -37,7 +46,8 @@ class InfoGetter():
 
         db_manager.instance.commit()
 
-    def _get_stored_addresses(self):
+    @staticmethod
+    def _get_stored_addresses():
         addresses = []
         for address in db_manager.instance.get_addresses():
             addresses.append(address)
@@ -47,11 +57,13 @@ class InfoGetter():
 
         yield addresses.copy()
 
-    def _add_server_stats(self, info_obj: McServer):
+    def add_server_stats(self, info_obj: McServer):
+        """Adds given McServer object to the database"""
         self._online_servers += 1
         db_manager.instance.add_mcserver_nocommit(info_obj)
 
     def update_players(self):
+        """Pings all stored servers and updates online player count"""
         self._online_servers = 0
         self._total_pinged = 0
         self._start_time = datetime.now()
@@ -62,7 +74,8 @@ class InfoGetter():
                 db_manager.instance.commit()
                 yield None
 
-            info_getter_thread = InfoGetterThread(self, mcservers)
+            info_getter_thread = InfoGetterThread(self)
+            info_getter_thread.add_list(mcservers)
             Thread(target=info_getter_thread.ping_all).start()
             self._running_threads += 1
 
@@ -75,7 +88,8 @@ class InfoGetter():
 
         db_manager.instance.commit()
 
-    def _get_stored_mcservers(self):
+    @staticmethod
+    def _get_stored_mcservers():
         mcservers = []
         for mcserver in db_manager.instance.get_mcservers():
             mcservers.append(mcserver)
@@ -85,6 +99,11 @@ class InfoGetter():
 
         yield mcservers.copy()
 
-    def _update_players(self, info_obj: McServer):
+    def add_updated_player(self, info_obj: McServer):
+        """Updates player count of given McServer object in the database"""
         self._online_servers += 1
         db_manager.instance.update_players_nocommit(info_obj)
+
+    def get_status(self):
+        """Returns the _total_pinged, _online_servers and _start_time properties"""
+        return [self._online_servers, self._total_pinged, self._start_time]
