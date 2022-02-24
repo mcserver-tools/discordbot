@@ -31,17 +31,35 @@ class InfoGetterThread():
 
     def _ping_address_with_return(self, address):
         try:
-            status = MinecraftServer(address, 25565).status()
+            server = MinecraftServer(address, 25565)
+            status = server.status()
+            if status.players.sample != None:
+                players = [item.name for item in status.players.sample]
+                if status.players.online > 12:
+                    c = 12
+                    tries = 10
+                    online = status.players.online
+                    while c < online and tries > 0:
+                        status = server.status()
+                        tries -= 1
+                        for item in status.players.sample:
+                            if not item in players:
+                                c += 1
+                                players.append(item.name)
+            else:
+                players = []
+
             info_obj = McServer((address, 25565), status.latency, status.version.name,
-                               status.players.online)
+                            status.players.online, players)
+
         except TimeoutError:
-            return
+            return None
         except ConnectionAbortedError:
-            return
+            return None
         except ConnectionResetError:
-            return
+            return None
         except IOError:
-            return
+            return None
 
         if not self.update_players:
             self.info_getter.add_server_stats(info_obj)

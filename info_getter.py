@@ -26,12 +26,12 @@ class InfoGetter():
         self._total_pinged = 0
         self._start_time = datetime.now()
 
-        db_manager.instance.clear_mcservers()
+        # db_manager.INSTANCE.clear_mcservers()
 
         for addresses in self._get_stored_addresses():
             while self._running_threads >= self._max_threads:
                 sleep(1)
-                db_manager.instance.commit()
+                db_manager.INSTANCE.commit()
                 yield None
 
             info_getter_thread = InfoGetterThread(self)
@@ -41,15 +41,15 @@ class InfoGetter():
 
         while self._running_threads > 0:
             sleep(1)
-            db_manager.instance.commit()
+            db_manager.INSTANCE.commit()
             yield None
 
-        db_manager.instance.commit()
+        db_manager.INSTANCE.commit()
 
     @staticmethod
     def _get_stored_addresses():
         addresses = []
-        for address in db_manager.instance.get_addresses():
+        for address in db_manager.INSTANCE.get_addresses():
             addresses.append(address)
             if len(addresses) >= 10:
                 yield addresses.copy()
@@ -60,7 +60,7 @@ class InfoGetter():
     def add_server_stats(self, info_obj: McServer):
         """Adds given McServer object to the database"""
         self._online_servers += 1
-        db_manager.instance.add_mcserver_nocommit(info_obj)
+        db_manager.INSTANCE.add_mcserver_nocommit(info_obj)
 
     def update_players(self):
         """Pings all stored servers and updates online player count"""
@@ -71,7 +71,7 @@ class InfoGetter():
         for mcservers in self._get_stored_mcservers():
             while self._running_threads >= self._max_threads:
                 sleep(1)
-                db_manager.instance.commit()
+                db_manager.INSTANCE.commit()
                 yield None
 
             info_getter_thread = InfoGetterThread(self)
@@ -79,19 +79,19 @@ class InfoGetter():
             Thread(target=info_getter_thread.ping_all).start()
             self._running_threads += 1
 
-        db_manager.instance.commit()
+        db_manager.INSTANCE.commit()
 
         while self._running_threads > 0:
             sleep(1)
-            db_manager.instance.commit()
+            db_manager.INSTANCE.commit()
             yield None
 
-        db_manager.instance.commit()
+        db_manager.INSTANCE.commit()
 
     @staticmethod
     def _get_stored_mcservers():
         mcservers = []
-        for mcserver in db_manager.instance.get_mcservers():
+        for mcserver in db_manager.INSTANCE.get_mcservers():
             mcservers.append(mcserver)
             if len(mcservers) >= 10:
                 yield mcservers.copy()
@@ -102,7 +102,7 @@ class InfoGetter():
     def add_updated_player(self, info_obj: McServer):
         """Updates player count of given McServer object in the database"""
         self._online_servers += 1
-        db_manager.instance.update_players_nocommit(info_obj)
+        db_manager.INSTANCE.update_players_nocommit(info_obj)
 
     def get_status(self):
         """Returns the _total_pinged, _online_servers and _start_time properties"""

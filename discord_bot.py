@@ -52,7 +52,7 @@ class DiscordBot(discord.Client):
 
     async def _update_command(self, message):
         msg = [message]
-        total_elements = db_manager.instance.get_number_of_mcservers()
+        total_elements = db_manager.INSTANCE.get_number_of_mcservers()
         embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
         wait_msg = await message.reply(embed=embed_var)
 
@@ -80,13 +80,13 @@ class DiscordBot(discord.Client):
 
     async def _rebuild_command(self, message):
         msg = [message]
-        total_elements = db_manager.instance.get_number_of_addresses()
+        total_elements = db_manager.INSTANCE.get_number_of_addresses()
         embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
         wait_msg = await message.reply(embed=embed_var)
 
         for item in self._info_getter.rebuild_list():
             status = self._info_getter.get_status()
-            embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
+            embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
             embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
             embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
             embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
@@ -97,7 +97,7 @@ class DiscordBot(discord.Client):
 
         await wait_msg.delete()
         status = self._info_getter.get_status()
-        embed_var = discord.Embed(title="Update completed!", color=0x00ff00)
+        embed_var = discord.Embed(title="Rebuild completed!", color=0x00ff00)
         embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
         embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
         msg.append(await message.reply(embed=embed_var))
@@ -114,8 +114,8 @@ class DiscordBot(discord.Client):
         else:
             count = int(message.content.split(" ")[1])
 
-        mcservers_list = db_manager.instance.get_mcservers()
-        mcservers_list.sort(key=lambda x:x.players, reverse=True)
+        mcservers_list = db_manager.INSTANCE.get_mcservers()
+        mcservers_list.sort(key=lambda x:x.online_players, reverse=True)
 
         for item in mcservers_list[:count:]:
             msg.append(await message.reply(embed=item.embed("Top servers")))
@@ -141,14 +141,14 @@ class DiscordBot(discord.Client):
             await item.delete()
 
     def _get_random_address(self):
+        address_count = db_manager.INSTANCE.get_number_of_addresses()
         rnd = Random()
         info_obj = None
         counter = 0
 
-        while info_obj is None or info_obj.players == 0:
-            address_count = db_manager.instance.get_number_of_addresses()
+        while info_obj is None or len(info_obj.players) == 0:
             rnd_number = rnd.randint(1, address_count)
-            address = db_manager.instance.get_address(rnd_number)
+            address = db_manager.INSTANCE.get_address(rnd_number)
             info_obj = self._ping_address_with_return(address)
             counter += 1
             print(f"Tried {counter} addresses...", end="\r")
@@ -159,9 +159,26 @@ class DiscordBot(discord.Client):
     @staticmethod
     def _ping_address_with_return(address):
         try:
-            status = MinecraftServer(address, 25565).status()
+            server = MinecraftServer(address, 25565)
+            status = server.status()
+            if status.players.sample != None:
+                players = [item.name for item in status.players.sample]
+            else:
+                players = []
+            if status.players.online > 12:
+                c = 12
+                tries = 100
+                online = status.players.online
+                while c < online and tries > 0:
+                    status = server.status()
+                    tries += 1
+                    for item in status.players.sample:
+                        if not item in players:
+                            c += 1
+                            players.append(item.name)
+
             return McServer((address, 25565), status.latency, status.version.name,
-                            status.players.online)
+                            status.players.online, players)
         except TimeoutError:
             return None
         except ConnectionAbortedError:
