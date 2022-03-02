@@ -10,21 +10,15 @@ class InfoGetterThread():
     def __init__(self, info_getter) -> None:
         self.info_getter = info_getter
         self.input_list = []
-        self.update_players = False
 
     def add_list(self, input_list):
         """Add a list containing all the addresses"""
         self.input_list = input_list
-        if isinstance(input_list[0], McServer):
-            self.update_players = True
 
     def ping_all(self):
         """Pings all given addresses"""
         for item in self.input_list:
-            if not self.update_players:
-                self._ping_address_with_return(item)
-            else:
-                self._ping_address_with_return(item.address[0])
+            self._ping_address_with_return(item)
             self.info_getter._total_pinged += 1
 
         self.info_getter._running_threads -= 1
@@ -33,7 +27,7 @@ class InfoGetterThread():
         try:
             server = MinecraftServer(address, 25565)
             status = server.status()
-            if status.players.sample != None:
+            if status.players.sample is not None:
                 players = [item.name for item in status.players.sample]
                 if status.players.online > 12:
                     c = 12
@@ -61,7 +55,4 @@ class InfoGetterThread():
         except IOError:
             return None
 
-        if not self.update_players:
-            self.info_getter.add_server_stats(info_obj)
-        else:
-            self.info_getter.add_updated_player(info_obj)
+        self.info_getter.add_server_stats(info_obj)
