@@ -79,6 +79,8 @@ class DiscordBot(discord.Client):
             await item.delete()
 
     async def _rebuild_command(self, message):
+        db_manager.INSTANCE.clear_mcservers()
+
         msg = [message]
         total_elements = db_manager.INSTANCE.get_number_of_addresses()
         embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
