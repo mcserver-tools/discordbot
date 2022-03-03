@@ -3,13 +3,14 @@
 from datetime import datetime
 from random import Random
 from time import sleep
+import importlib.util
 
 import discord
 from mcstatus import MinecraftServer
 
-from database import db_manager
-from discordbot.info_getter import InfoGetter
-from discordbot.mcserver import McServer
+import db_manager
+from info_getter import InfoGetter
+from mcserver import McServer
 
 class DiscordBot(discord.Client):
     """Class providing a discord bot"""
@@ -49,14 +50,19 @@ class DiscordBot(discord.Client):
                 await message.channel.send(embed=embed_var)
 
     async def _rebuild_command(self, message):
+        spec = importlib.util.spec_from_file_location("db_manager", __file__.rsplit("\\", maxsplit=2)[0] + "\\pingserver\\db_manager.py")
+        db_manager_server_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(db_manager_server_module)
+        db_manager_server = db_manager_server_module.DBManager()
+
         db_manager.INSTANCE.clear_mcservers()
 
         msg = [message]
-        total_elements = db_manager.INSTANCE.get_number_of_addresses()
+        total_elements = db_manager_server.get_number_of_addresses()
         embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
         wait_msg = await message.reply(embed=embed_var)
 
-        for item in self._info_getter.rebuild_list():
+        for item in self._info_getter.rebuild_list(db_manager_server):
             status = self._info_getter.get_status()
             embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
             embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
@@ -113,14 +119,19 @@ class DiscordBot(discord.Client):
             await item.delete()
 
     def _get_random_address(self):
-        address_count = db_manager.INSTANCE.get_number_of_addresses()
+        spec = importlib.util.spec_from_file_location("db_manager", __file__.rsplit("\\", maxsplit=2)[0] + "\\pingserver\\db_manager.py")
+        db_manager_server_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(db_manager_server_module)
+        db_manager_server = db_manager_server_module.DBManager()
+
+        address_count = db_manager_server.get_number_of_addresses()
         rnd = Random()
         info_obj = None
         counter = 0
 
         while info_obj is None or len(info_obj.players) == 0:
             rnd_number = rnd.randint(1, address_count)
-            address = db_manager.INSTANCE.get_address(rnd_number)
+            address = db_manager_server.get_address(rnd_number)
             info_obj = self._ping_address_with_return(address)
             counter += 1
             print(f"Tried {counter} addresses...", end="\r")

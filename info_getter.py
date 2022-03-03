@@ -4,10 +4,10 @@ from datetime import datetime
 from threading import Thread
 from time import sleep
 
-from database import db_manager
+import db_manager
 
-from discordbot.info_getter_thread import InfoGetterThread
-from discordbot.mcserver import McServer
+from info_getter_thread import InfoGetterThread
+from mcserver import McServer
 
 
 class InfoGetter():
@@ -20,15 +20,15 @@ class InfoGetter():
         self._total_pinged = 0
         self._start_time = None
 
-    def rebuild_list(self):
+    def rebuild_list(self, db_manager_server):
         """Pings all stored addresses and saves gained information"""
         self._online_servers = 0
         self._total_pinged = 0
         self._start_time = datetime.now()
 
-        # db_manager.INSTANCE.clear_mcservers()
+        db_manager.INSTANCE.clear_mcservers()
 
-        for addresses in self._get_stored_addresses():
+        for addresses in self._get_stored_addresses(db_manager_server):
             while self._running_threads >= self._max_threads:
                 sleep(1)
                 db_manager.INSTANCE.commit()
@@ -47,9 +47,9 @@ class InfoGetter():
         db_manager.INSTANCE.commit()
 
     @staticmethod
-    def _get_stored_addresses():
+    def _get_stored_addresses(db_manager_server):
         addresses = []
-        for address in db_manager.INSTANCE.get_addresses():
+        for address in db_manager_server.get_addresses():
             addresses.append(address)
             if len(addresses) >= 10:
                 yield addresses.copy()

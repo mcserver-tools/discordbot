@@ -2,7 +2,7 @@
 
 from mcstatus import MinecraftServer
 
-from discordbot.mcserver import McServer
+from mcserver import McServer
 
 class InfoGetterThread():
     """Class that pings every address provided"""
