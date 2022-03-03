@@ -40,8 +40,6 @@ class DiscordBot(discord.Client):
                 await self._hello_command(message)
             elif msg_text.startswith("rebuild"):
                 await self._rebuild_command(message)
-            elif msg_text.startswith("update"):
-                await self._update_command(message)
             elif msg_text.startswith("top"):
                 await self._top_command(message)
             elif msg_text.startswith("embed"):
@@ -49,34 +47,6 @@ class DiscordBot(discord.Client):
                 embed_var.add_field(name="Field1", value="hi", inline=False)
                 embed_var.add_field(name="Field2", value="hi2", inline=False)
                 await message.channel.send(embed=embed_var)
-
-    async def _update_command(self, message):
-        msg = [message]
-        total_elements = db_manager.INSTANCE.get_number_of_mcservers()
-        embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
-        wait_msg = await message.reply(embed=embed_var)
-
-        for item in self._info_getter.update_players():
-            status = self._info_getter.get_status()
-            embed_var = discord.Embed(title="Updating online players...", color=0x00ff00)
-            embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
-            embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
-            embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
-            embed_var.add_field(name="Elapsed",
-                                value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
-                                inline=False)
-            await wait_msg.edit(embed=embed_var)
-
-        await wait_msg.delete()
-        status = self._info_getter.get_status()
-        embed_var = discord.Embed(title="Update completed!", color=0x00ff00)
-        embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
-        embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
-        msg.append(await message.reply(embed=embed_var))
-        sleep(10)
-
-        for item in msg:
-            await item.delete()
 
     async def _rebuild_command(self, message):
         db_manager.INSTANCE.clear_mcservers()
