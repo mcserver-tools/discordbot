@@ -20,7 +20,7 @@ class McServer():
         embed_var.add_field(name="Address", value=f"{self.address[0]}:{self.address[1]}",
                            inline=False)
         embed_var.add_field(name="Ping", value=f"{self.ping} ms", inline=False)
-        embed_var.add_field(name="Version", value=f"{self.version}", inline=False)
+        embed_var.add_field(name="Version", value=f"{self.version[:128:]}", inline=False)
         embed_var.add_field(name="Online players", value=f"{self.online_players}", inline=False)
         embed_var.add_field(name="Players", value=f"{str(self.players)}", inline=False)
         return embed_var
