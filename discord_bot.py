@@ -8,7 +8,7 @@ import importlib.util
 import discord
 from mcstatus import MinecraftServer
 
-import db_manager
+from db_manager import DBManager
 from info_getter import InfoGetter
 from mcserver import McServer
 
@@ -50,12 +50,14 @@ class DiscordBot(discord.Client):
                 await message.channel.send(embed=embed_var)
 
     async def _rebuild_command(self, message):
-        spec = importlib.util.spec_from_file_location("db_manager", __file__.rsplit("\\", maxsplit=2)[0] + "\\pingserver\\db_manager.py")
+        spec = importlib.util.spec_from_file_location("db_manager",
+                                                      __file__.rsplit("\\", maxsplit=2)[0]
+                                                      + "\\pingserver\\db_manager.py")
         db_manager_server_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(db_manager_server_module)
         db_manager_server = db_manager_server_module.DBManager()
 
-        db_manager.INSTANCE.clear_mcservers()
+        DBManager.INSTANCE.clear_mcservers()
 
         msg = [message]
         total_elements = db_manager_server.get_number_of_addresses()
@@ -92,7 +94,7 @@ class DiscordBot(discord.Client):
         else:
             count = int(message.content.split(" ")[1])
 
-        mcservers_list = db_manager.INSTANCE.get_mcservers()
+        mcservers_list = DBManager.INSTANCE.get_mcservers()
         mcservers_list.sort(key=lambda x:x.online_players, reverse=True)
 
         for item in mcservers_list[:count:]:
@@ -113,13 +115,15 @@ class DiscordBot(discord.Client):
         await wait_msg.delete()
         msg.append(await message.reply(embed=info_obj.embed("A randomly chosen mc server ip")))
 
-        sleep(10)
+        sleep(15)
 
         for item in msg:
             await item.delete()
 
     def _get_random_address(self):
-        spec = importlib.util.spec_from_file_location("db_manager", __file__.rsplit("\\", maxsplit=2)[0] + "\\pingserver\\db_manager.py")
+        spec = importlib.util.spec_from_file_location("db_manager",
+                                                      __file__.rsplit("\\", maxsplit=2)[0]
+                                                      + "\\pingserver\\db_manager.py")
         db_manager_server_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(db_manager_server_module)
         db_manager_server = db_manager_server_module.DBManager()
@@ -139,26 +143,14 @@ class DiscordBot(discord.Client):
         print(f"Tried {counter} addresses...")
         return info_obj
 
-    @staticmethod
-    def _ping_address_with_return(address):
+    def _ping_address_with_return(self, address):
         try:
             server = MinecraftServer(address, 25565)
             status = server.status()
-            if status.players.sample != None:
-                players = [item.name for item in status.players.sample]
+            if status.players.sample is not None:
+                players = self._get_playernames(server)
             else:
                 players = []
-            if status.players.online > 12:
-                c = 12
-                tries = 100
-                online = status.players.online
-                while c < online and tries > 0:
-                    status = server.status()
-                    tries += 1
-                    for item in status.players.sample:
-                        if not item in players:
-                            c += 1
-                            players.append(item.name)
 
             return McServer((address, 25565), status.latency, status.version.name,
                             status.players.online, players)
@@ -170,3 +162,20 @@ class DiscordBot(discord.Client):
             return None
         except IOError:
             return None
+
+    @staticmethod
+    def _get_playernames(server: MinecraftServer):
+        status = server.status()
+        players = [item.name for item in status.players.sample]
+        if status.players.online > 12:
+            found_players = 12
+            tries = 10
+            online_players = status.players.online
+            while found_players < online_players and tries > 0:
+                status = server.status()
+                tries -= 1
+                for item in status.players.sample:
+                    if not item in players:
+                        found_players += 1
+                        players.append(item.name)
+        return players

@@ -1,18 +1,19 @@
 """Module containing the McServer data object"""
 
 from typing import List, Tuple
+from dataclasses import dataclass
 
 import discord
 
+@dataclass
 class McServer():
     """McServer data object, containing address, ping, version and players"""
 
-    def __init__(self, address: Tuple[str, int], ping: float, version: str, online_players: int, players: List[str]) -> None:
-        self.address = address
-        self.ping = f"{ping:0.2f}"
-        self.version = version
-        self.online_players = online_players
-        self.players = players
+    address: Tuple[str, int]
+    ping: float
+    version: str
+    online_players: int
+    players: List[str]
 
     def embed(self, title: str) -> discord.Embed:
         """Return the data object as an discord embed"""

@@ -28,18 +28,7 @@ class InfoGetterThread():
             server = MinecraftServer(address, 25565)
             status = server.status()
             if status.players.sample is not None:
-                players = [item.name for item in status.players.sample]
-                if status.players.online > 12:
-                    c = 12
-                    tries = 10
-                    online = status.players.online
-                    while c < online and tries > 0:
-                        status = server.status()
-                        tries -= 1
-                        for item in status.players.sample:
-                            if not item in players:
-                                c += 1
-                                players.append(item.name)
+                players = self._get_playernames(server)
             else:
                 players = []
 
@@ -47,12 +36,29 @@ class InfoGetterThread():
                             status.players.online, players)
 
         except TimeoutError:
-            return None
+            return
         except ConnectionAbortedError:
-            return None
+            return
         except ConnectionResetError:
-            return None
+            return
         except IOError:
-            return None
+            return
 
         self.info_getter.add_server_stats(info_obj)
+
+    @staticmethod
+    def _get_playernames(server: MinecraftServer):
+        status = server.status()
+        players = [item.name for item in status.players.sample]
+        if status.players.online > 12:
+            found_players = 12
+            tries = 10
+            online_players = status.players.online
+            while found_players < online_players and tries > 0:
+                status = server.status()
+                tries -= 1
+                for item in status.players.sample:
+                    if not item in players:
+                        found_players += 1
+                        players.append(item.name)
+        return players

@@ -4,11 +4,10 @@ from datetime import datetime
 from threading import Thread
 from time import sleep
 
-import db_manager
+from db_manager import DBManager
 
 from info_getter_thread import InfoGetterThread
 from mcserver import McServer
-
 
 class InfoGetter():
     """Class providing information getting methods"""
@@ -26,12 +25,12 @@ class InfoGetter():
         self._total_pinged = 0
         self._start_time = datetime.now()
 
-        db_manager.INSTANCE.clear_mcservers()
+        DBManager.INSTANCE.clear_mcservers()
 
         for addresses in self._get_stored_addresses(db_manager_server):
             while self._running_threads >= self._max_threads:
                 sleep(1)
-                db_manager.INSTANCE.commit()
+                DBManager.INSTANCE.commit()
                 yield None
 
             info_getter_thread = InfoGetterThread(self)
@@ -41,10 +40,10 @@ class InfoGetter():
 
         while self._running_threads > 0:
             sleep(1)
-            db_manager.INSTANCE.commit()
+            DBManager.INSTANCE.commit()
             yield None
 
-        db_manager.INSTANCE.commit()
+        DBManager.INSTANCE.commit()
 
     @staticmethod
     def _get_stored_addresses(db_manager_server):
@@ -63,11 +62,12 @@ class InfoGetter():
 
         players = []
         for playername in info_obj.players:
-            if len(playername.split(" ")) == 1 and len(playername.split("§")) == 1 and playername not in ["", " "]:
+            if len(playername.split(" ")) == 1 and len(playername.split("§")) == 1 and \
+               playername not in ["", " "]:
                 players.append(playername.strip())
         info_obj.players = players
 
-        db_manager.INSTANCE.add_mcserver_nocommit(info_obj)
+        DBManager.INSTANCE.add_mcserver_nocommit(info_obj)
 
     def get_status(self):
         """Returns the _total_pinged, _online_servers and _start_time properties"""

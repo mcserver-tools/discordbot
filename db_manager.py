@@ -8,13 +8,13 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from model import Base, McServer, Player
 from mcserver import McServer as McServerObj
 
-INSTANCE = None
+# pylint: disable=R0801
 
 class DBManager():
     """Class that manages the database"""
 
     def __init__(self):
-        if INSTANCE is None:
+        if DBManager.INSTANCE is None:
             db_connection = sqlalchemy.create_engine("sqlite:///discordbot/mcservers.db",
                                                      connect_args={'check_same_thread': False})
             Base.metadata.create_all(db_connection)
@@ -24,6 +24,10 @@ class DBManager():
             self.session = _session()
 
             self.lock = Lock()
+
+            DBManager.INSTANCE = self
+
+    INSTANCE = None
 
     def clear_mcservers(self):
         """Deletes all McServer entries in the database"""
@@ -74,5 +78,3 @@ class DBManager():
         """Returns the number of McServer objects in the database"""
 
         return self.session.query(McServer).count()
-
-INSTANCE = DBManager()
