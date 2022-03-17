@@ -39,6 +39,8 @@ class DiscordBot(discord.Client):
             msg_text = message.content[1::]
             if msg_text.startswith("hello"):
                 await self._hello_command(message)
+            elif msg_text.startswith("info"):
+                await self._info_command(message)
             elif msg_text.startswith("rebuild"):
                 await self._rebuild_command(message)
             elif msg_text.startswith("top"):
@@ -48,6 +50,26 @@ class DiscordBot(discord.Client):
                 embed_var.add_field(name="Field1", value="hi", inline=False)
                 embed_var.add_field(name="Field2", value="hi2", inline=False)
                 await message.channel.send(embed=embed_var)
+
+    async def _info_command(self, message):
+        msg = [message]
+        if len(message.content.split(" ")) == 1:
+            msg.append(await message.reply("Missing ip address"))
+            sleep(5)
+            for item in msg:
+                await item.delete()
+            return
+        else:
+            address = message.content.split(" ")[1]
+
+        info_obj = self._ping_address_with_return(address)
+        if info_obj == None:
+            msg.append(await message.reply("Server is not reachable"))
+        else:
+            msg.append(await message.reply(embed=info_obj.embed("Server info:")))
+        sleep(10)
+        for item in msg:
+            await item.delete()
 
     async def _rebuild_command(self, message):
         spec = importlib.util.spec_from_file_location("db_manager",
@@ -143,17 +165,24 @@ class DiscordBot(discord.Client):
         print(f"Tried {counter} addresses...")
         return info_obj
 
-    def _ping_address_with_return(self, address):
+    def _ping_address_with_return(self, address) -> McServer:
         try:
-            server = MinecraftServer(address, 25565)
+            if len(address.split(":")) == 2:
+                server = MinecraftServer(address.split(":")[0], int(address.split(":")[1]))
+            else:
+                server = MinecraftServer(address)
             status = server.status()
             if status.players.sample is not None:
                 players = self._get_playernames(server)
             else:
                 players = []
 
-            return McServer((address, 25565), status.latency, status.version.name,
-                            status.players.online, players)
+            if len(address.split(":")) == 2:
+                return McServer(tuple(address.split(":")), status.latency, status.version.name,
+                                status.players.online, players)
+            else:
+                return McServer((address, 25565), status.latency, status.version.name,
+                                status.players.online, players)
         except TimeoutError:
             return None
         except ConnectionAbortedError:
