@@ -1,6 +1,5 @@
 """Module containing the DiscordBot class"""
 
-from datetime import datetime
 from random import Random
 from time import sleep
 import importlib.util
@@ -8,8 +7,8 @@ import importlib.util
 import discord
 from mcstatus import MinecraftServer
 
+import bot_commands
 from db_manager import DBManager
-from info_getter import InfoGetter
 from mcserver import McServer
 
 class DiscordBot(discord.Client):
@@ -17,7 +16,6 @@ class DiscordBot(discord.Client):
 
     def __init__(self, *, loop=None, **options):
         super().__init__(loop=loop, **options)
-        self._info_getter = InfoGetter()
 
     def start_bot(self):
         """Start the discord bot"""
@@ -42,7 +40,9 @@ class DiscordBot(discord.Client):
             elif msg_text.startswith("info"):
                 await self._info_command(message)
             elif msg_text.startswith("rebuild"):
-                await self._rebuild_command(message)
+                await bot_commands.rebuild_command(message)
+            elif msg_text.startswith("status"):
+                await bot_commands.status_command(message)
             elif msg_text.startswith("top"):
                 await self._top_command(message)
             elif msg_text.startswith("embed"):
@@ -67,44 +67,7 @@ class DiscordBot(discord.Client):
             msg.append(await message.reply("Server is not reachable"))
         else:
             msg.append(await message.reply(embed=info_obj.embed("Server info:")))
-        sleep(10)
-        for item in msg:
-            await item.delete()
-
-    async def _rebuild_command(self, message):
-        spec = importlib.util.spec_from_file_location("db_manager",
-                                                      __file__.rsplit("\\", maxsplit=2)[0]
-                                                      + "\\pingserver\\db_manager.py")
-        db_manager_server_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(db_manager_server_module)
-        db_manager_server = db_manager_server_module.DBManager()
-
-        DBManager.INSTANCE.clear_mcservers()
-
-        msg = [message]
-        total_elements = db_manager_server.get_number_of_addresses()
-        embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
-        wait_msg = await message.reply(embed=embed_var)
-
-        for item in self._info_getter.rebuild_list(db_manager_server):
-            status = self._info_getter.get_status()
-            embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
-            embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
-            embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
-            embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
-            embed_var.add_field(name="Elapsed",
-                                value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
-                                inline=False)
-            await wait_msg.edit(embed=embed_var)
-
-        await wait_msg.delete()
-        status = self._info_getter.get_status()
-        embed_var = discord.Embed(title="Rebuild completed!", color=0x00ff00)
-        embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
-        embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
-        msg.append(await message.reply(embed=embed_var))
-        sleep(10)
-
+        sleep(15)
         for item in msg:
             await item.delete()
 
@@ -195,7 +158,7 @@ class DiscordBot(discord.Client):
     @staticmethod
     def _get_playernames(server: MinecraftServer):
         status = server.status()
-        players = [item.name for item in status.players.sample]
+        players = [(item.name, item.id) for item in status.players.sample]
         if status.players.online > 12:
             found_players = 12
             tries = 10
@@ -206,5 +169,5 @@ class DiscordBot(discord.Client):
                 for item in status.players.sample:
                     if not item in players:
                         found_players += 1
-                        players.append(item.name)
+                        players.append((item.name, item.id))
         return players

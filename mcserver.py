@@ -13,7 +13,7 @@ class McServer():
     ping: float
     version: str
     online_players: int
-    players: List[str]
+    players: List[Tuple[str, str]]
 
     def embed(self, title: str) -> discord.Embed:
         """Return the data object as an discord embed"""
@@ -23,7 +23,7 @@ class McServer():
         embed_var.add_field(name="Ping", value=f"{self.ping} ms", inline=False)
         embed_var.add_field(name="Version", value=f"{self.version[:128:]}", inline=False)
         embed_var.add_field(name="Online players", value=f"{self.online_players}", inline=False)
-        embed_var.add_field(name="Players", value=f"{str(self.players)}", inline=False)
+        embed_var.add_field(name="Players", value=f"{str([item[0] for item in self.players])}", inline=False)
         return embed_var
 
     def __str__(self) -> str:

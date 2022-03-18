@@ -5,35 +5,27 @@ from threading import Thread
 from time import sleep
 
 from db_manager import DBManager
-
 from info_getter_thread import InfoGetterThread
-from mcserver import McServer
 
 class InfoGetter():
     """Class providing information getting methods"""
 
-    def __init__(self) -> None:
-        self._max_threads = 2000
+    def __init__(self, max_threads = 100) -> None:
+        self._max_threads = max_threads
         self._running_threads = 0
         self._online_servers = 0
         self._total_pinged = 0
         self._start_time = None
 
-    def rebuild_list(self, db_manager_server):
-        """Pings all stored addresses and saves gained information"""
-        self._online_servers = 0
-        self._total_pinged = 0
+    def ping_addresses(self, address_iterator, success_callback):
         self._start_time = datetime.now()
 
-        DBManager.INSTANCE.clear_mcservers()
-
-        for addresses in self._get_stored_addresses(db_manager_server):
+        for addresses in address_iterator():
             while self._running_threads >= self._max_threads:
                 sleep(1)
-                DBManager.INSTANCE.commit()
                 yield None
 
-            info_getter_thread = InfoGetterThread(self)
+            info_getter_thread = InfoGetterThread(self, success_callback)
             info_getter_thread.add_list(addresses)
             Thread(target=info_getter_thread.ping_all).start()
             self._running_threads += 1
@@ -43,31 +35,8 @@ class InfoGetter():
             DBManager.INSTANCE.commit()
             yield None
 
-        DBManager.INSTANCE.commit()
-
-    @staticmethod
-    def _get_stored_addresses(db_manager_server):
-        addresses = []
-        for address in db_manager_server.get_addresses():
-            addresses.append(address)
-            if len(addresses) >= 10:
-                yield addresses.copy()
-                addresses.clear()
-
-        yield addresses.copy()
-
-    def add_server_stats(self, info_obj: McServer):
-        """Adds given McServer object to the database"""
-        self._online_servers += 1
-
-        players = []
-        for playername in info_obj.players:
-            if len(playername.split(" ")) == 1 and len(playername.split("§")) == 1 and \
-               playername not in ["", " "]:
-                players.append(playername.strip())
-        info_obj.players = players
-
-        DBManager.INSTANCE.add_mcserver_nocommit(info_obj)
+    def finished(self):
+        return self._running_threads == 0 and self._total_pinged > 0
 
     def get_status(self):
         """Returns the _total_pinged, _online_servers and _start_time properties"""
