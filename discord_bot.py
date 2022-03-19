@@ -45,6 +45,8 @@ class DiscordBot(discord.Client):
                 await bot_commands.status_command(message)
             elif msg_text.startswith("top"):
                 await self._top_command(message)
+            elif msg_text.startswith("watch"):
+                await bot_commands.watch_command(message, msg_text.split(" ", maxsplit=1)[1], self)
             elif msg_text.startswith("embed"):
                 embed_var = discord.Embed(title="Title", description="Desc", color=0x00ff00)
                 embed_var.add_field(name="Field1", value="hi", inline=False)

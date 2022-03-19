@@ -25,8 +25,6 @@ class DBManager():
 
             self.lock = Lock()
 
-            self.not_found = 0
-
             DBManager.INSTANCE = self
 
     INSTANCE = None
@@ -74,6 +72,17 @@ class DBManager():
                 self.session.commit()
             except sqlalchemy.exc.IntegrityError:
                 self.session.rollback()
+
+    def get_mcserver(self, address):
+        """Return the McServer with the given address"""
+
+        with self.lock:
+            mcserver_db = self.session.query(McServer).filter(McServer.address==address).first()
+            if mcserver_db is None:
+                return None
+            status = mcserver_db.statuses[-1]
+            players = [(item.name, item.uuid) for item in status.players]
+            return McServerObj((address, 25565), status.ping, mcserver_db.version, status.online_players, players)
 
     def get_mcservers(self):
         """Returns all McServer objects in the database"""

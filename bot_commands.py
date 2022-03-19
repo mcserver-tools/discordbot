@@ -1,7 +1,9 @@
+import asyncio
 import importlib.util
 import discord
 from datetime import datetime
 from time import sleep
+from threading import Thread
 
 from info_getter import InfoGetter
 from db_manager import DBManager
@@ -12,6 +14,16 @@ spec = importlib.util.spec_from_file_location("db_manager",
 db_manager_server_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(db_manager_server_module)
 db_manager_server = db_manager_server_module.DBManager()
+
+async def watch_command(message, address, discord_bot):
+    msg = [message]
+    info_getter = InfoGetter()
+    address_iter = lambda: (yield [address])
+    for _ in info_getter.ping_addresses(address_iter, _add_mcserver):
+        pass
+
+    watch_thread = Thread(target=_watch_address, args=(address, discord_bot))
+    watch_thread.start()
 
 async def status_command(message):
     msg = [message]
@@ -42,7 +54,6 @@ async def status_command(message):
     msg.append(await message.reply(embed=embed_var))
 
     DBManager.INSTANCE.commit()
-    print(DBManager.INSTANCE.not_found)
     sleep(10)
 
     for item in msg:
@@ -114,3 +125,23 @@ def _add_status(info_obj):
     info_obj.players = players
 
     DBManager.INSTANCE.add_status_nocommit(info_obj)
+
+def _watch_address(address, discord_bot: discord.Client):
+    get_fut = asyncio.run_coroutine_threadsafe(discord_bot.fetch_user(650587171375284226), discord_bot.loop)
+    user = get_fut.result()
+
+    watch_message = None
+    
+    while True:
+        info_getter = InfoGetter()
+        address_iter = lambda: (yield [address])
+        for _ in info_getter.ping_addresses(address_iter, _add_status):
+            pass
+
+        sleep(3)
+        if watch_message is not None:
+            delete_fut = asyncio.run_coroutine_threadsafe(watch_message.delete(), discord_bot.loop)
+            delete_fut.result()
+        send_fut = asyncio.run_coroutine_threadsafe(user.send(embed=DBManager.INSTANCE.get_mcserver(address).embed("Watched server")), discord_bot.loop)
+        watch_message = send_fut.result()
+        sleep(27)
