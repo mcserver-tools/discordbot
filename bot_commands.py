@@ -15,6 +15,17 @@ db_manager_server_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(db_manager_server_module)
 db_manager_server = db_manager_server_module.DBManager()
 
+async def autostatus_command(message, discord_bot):
+    msg = [message]
+    autostatus_thread = Thread(target=_autostatus_thread, args=(discord_bot,))
+    autostatus_thread.start()
+    msg.append(await message.reply("Autostatus running..."))
+
+    sleep(10)
+
+    for item in msg:
+        await item.delete()
+
 async def watch_command(message, address, discord_bot):
     msg = [message]
     info_getter = InfoGetter()
@@ -24,6 +35,12 @@ async def watch_command(message, address, discord_bot):
 
     watch_thread = Thread(target=_watch_address, args=(address, discord_bot))
     watch_thread.start()
+    msg.append(await message.reply("Watching address " + address))
+
+    sleep(10)
+
+    for item in msg:
+        await item.delete()
 
 async def status_command(message):
     msg = [message]
@@ -67,7 +84,7 @@ async def rebuild_command(message):
 
     info_getter = InfoGetter(1000)
 
-    for item in info_getter.ping_addresses(_rebuild_iterator, _add_mcserver):
+    for _ in info_getter.ping_addresses(_rebuild_iterator, _add_mcserver):
         status = info_getter.get_status()
         embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
         embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
@@ -145,3 +162,76 @@ def _watch_address(address, discord_bot: discord.Client):
         send_fut = asyncio.run_coroutine_threadsafe(user.send(embed=DBManager.INSTANCE.get_mcserver(address).embed("Watched server")), discord_bot.loop)
         watch_message = send_fut.result()
         sleep(27)
+
+def _autostatus_thread(discord_bot: discord.Client):
+    get_fut = asyncio.run_coroutine_threadsafe(discord_bot.fetch_channel(954488428815327294), discord_bot.loop)
+    channel = get_fut.result()
+    embed_var = discord.Embed(title="Initializing rebuild...", color=0x00ff00)
+    send_fut = asyncio.run_coroutine_threadsafe(channel.send(embed=embed_var), discord_bot.loop)
+    message = send_fut.result()
+
+    while True:
+        start_time = datetime.now()
+        rebuild_fut = asyncio.run_coroutine_threadsafe(_autostatus_async(message), discord_bot.loop)
+        embed_var = rebuild_fut.result()
+        embed_var.add_field(name="Next status", value = str((datetime.now() - start_time).seconds), inline=False)
+        while (datetime.now() - start_time).seconds < 900:
+            sleep(1)
+            embed_dict = embed_var.to_dict()
+            embed_var = discord.Embed(title=embed_dict["title"], color=embed_dict["color"])
+            embed_fields = embed_dict["fields"]
+            for field in embed_fields:
+                if field["name"] != "Next status":
+                    embed_var.add_field(name=field["name"], value=field["value"], inline=False)
+                else:
+                    embed_var.add_field(name=field["name"], value=str(900 - (datetime.now() - start_time).seconds) + " s", inline=False)
+            update_fut = asyncio.run_coroutine_threadsafe(message.edit(embed=embed_var), discord_bot.loop)
+            update_fut.result()
+
+async def _autostatus_async(message) -> discord.Embed:
+    total_elements = db_manager_server.get_number_of_addresses()
+    embed_var = discord.Embed(title="Rebuilding list...", color=0x00ff00)
+    await message.edit(embed=embed_var)
+
+    info_getter = InfoGetter(1000)
+    last_commit_time = datetime.now()
+    for _ in info_getter.ping_addresses(_rebuild_iterator, _add_mcserver):
+        status = info_getter.get_status()
+        embed_var = discord.Embed(title="Rebuilding servers...", color=0x00ff00)
+        embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
+        embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
+        embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
+        embed_var.add_field(name="Elapsed",
+                            value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
+                            inline=False)
+        await message.edit(embed=embed_var)
+
+        if (datetime.now() - last_commit_time).seconds > 10:
+            last_commit_time = datetime.now()
+        DBManager.INSTANCE.commit()
+
+    info_getter = InfoGetter(1000)
+    last_commit_time = datetime.now()
+    for _ in info_getter.ping_addresses(_rebuild_iterator, _add_status):
+        status = info_getter.get_status()
+        embed_var = discord.Embed(title="Adding statuses...", color=0x00ff00)
+        embed_var.add_field(name="Total", value=f"{status[1]}/{total_elements}", inline=False)
+        embed_var.add_field(name="Responded", value=f"{status[0]}", inline=False)
+        embed_var.add_field(name="No response", value=f"{status[1] - status[0]}", inline=False)
+        embed_var.add_field(name="Elapsed",
+                            value=f"{str(datetime.now()-status[2]).split('.', maxsplit=1)[0]}",
+                            inline=False)
+        await message.edit(embed=embed_var)
+
+        if (datetime.now() - last_commit_time).seconds > 10:
+            last_commit_time = datetime.now()
+        DBManager.INSTANCE.commit()
+
+    status = info_getter.get_status()
+    embed_var = discord.Embed(title="Rebuild completed!", color=0x00ff00)
+    embed_var.add_field(name="Total", value=f"{total_elements}", inline=False)
+    embed_var.add_field(name="Online", value=f"{status[0]}", inline=False)
+    await message.edit(embed=embed_var)
+
+    DBManager.INSTANCE.commit()
+    return embed_var

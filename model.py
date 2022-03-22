@@ -16,7 +16,7 @@ class McServer(Base):
     mcserver_id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     address = sqlalchemy.Column(sqlalchemy.String, unique=True)
     version = sqlalchemy.Column(sqlalchemy.String)
-    statuses = relationship("Status")
+    statuses = relationship("Status", lazy='noload')
 
 class Status(Base):
     """Status representation."""
@@ -28,14 +28,23 @@ class Status(Base):
     time = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now)
     ping = sqlalchemy.Column(sqlalchemy.Float)
     online_players = sqlalchemy.Column(sqlalchemy.Integer)
-    players = relationship("Player")
+    statusplayers = relationship("StatusPlayer")
 
 class Player(Base):
     """Player representation."""
 
     __tablename__ = "player"
     player_id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    status_id = sqlalchemy.Column(sqlalchemy.Integer,
-                                    sqlalchemy.ForeignKey("status.status_id"))
     name = sqlalchemy.Column(sqlalchemy.String)
     uuid = sqlalchemy.Column(sqlalchemy.String, unique=True)
+    statusplayers = relationship("StatusPlayer")
+
+class StatusPlayer(Base):
+    """Status and Player crosstable."""
+
+    __tablename__ = "statusplayer"
+    statusplayer_id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    status_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                    sqlalchemy.ForeignKey("status.status_id"))
+    player_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                    sqlalchemy.ForeignKey("player.player_id"))

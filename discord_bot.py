@@ -47,6 +47,8 @@ class DiscordBot(discord.Client):
                 await self._top_command(message)
             elif msg_text.startswith("watch"):
                 await bot_commands.watch_command(message, msg_text.split(" ", maxsplit=1)[1], self)
+            elif msg_text.startswith("autostatus"):
+                await bot_commands.autostatus_command(message, self)
             elif msg_text.startswith("embed"):
                 embed_var = discord.Embed(title="Title", description="Desc", color=0x00ff00)
                 embed_var.add_field(name="Field1", value="hi", inline=False)
@@ -95,7 +97,7 @@ class DiscordBot(discord.Client):
     async def _hello_command(self, message):
         msg = [message]
 
-        msg.append(await message.reply('Hello!', mention_author=True))
+        msg.append(await message.reply('Hello!'))
 
         wait_msg = await message.reply("Getting random address...")
         info_obj = self._get_random_address()

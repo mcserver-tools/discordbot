@@ -32,7 +32,6 @@ class InfoGetter():
 
         while self._running_threads > 0:
             sleep(1)
-            DBManager.INSTANCE.commit()
             yield None
 
     def finished(self):
